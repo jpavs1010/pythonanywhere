@@ -25,7 +25,11 @@ SECRET_KEY = 'd=8mq(9*ripa1#ikw+#t+_t^(^gm2a)yhfqw(any=8au7ai&3k'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+    'jpavs.pythonanywhere.com'
+    'www.jpavs.pythonanywhere.com'
+    '.pythonanywhere.com'
+]
 
 
 # Application definition
