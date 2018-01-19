@@ -1,0 +1,241 @@
+{% load static %}
+
+<ul>
+    <li><a class="active" href="{% url 'capstone:index2' %}">Map</a></li>
+    <li><a href="{% url 'capstone:correlation' %}">Correlations</a></li>
+    <li><a href="{% url 'capstone:scatterplot' %}">Scatter Plot</a></li>
+    <select id="ddl_graph">
+        <option value ="">Select Variable</option>
+        {% for mapdatum in mapdata %}
+        <option value="{{mapdatum.variable}}">{{mapdatum.variable}}</option>
+        {% endfor %}
+    </select>
+    <button id="bt_show_graph">show</button>
+    <li id="page_title"></li>
+
+</ul>
+
+<div id="map"></div>
+<svg width="960" height="600"></svg>
+
+<style>
+    .counties {
+        fill: none;
+    }
+    .states {
+        fill: none;
+        stroke: #000;
+        stroke-linejoin: round;
+    }
+    .counties path:hover {
+        opacity: 0.75;
+        fill: #ffb366;
+        stroke: #000
+    }
+
+    ul {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: lightblue;
+        height: 22px;
+
+}
+
+    li {
+        float: left;
+    }
+
+    li a {
+        display: block;
+        color: black;
+        text-align: center;
+        padding: 0px 16px;
+        text-decoration: none;
+    }
+
+    li a:hover {
+        background-color: blue;
+        height: 22px;
+        font-weight: bold;
+        color: white;
+    }
+    #page_title {
+        padding: 0px 50px;
+        font-weight: bold;
+        font-size: 20px;
+    }
+</style>
+<script src="https://d3js.org/d3.v4.min.js"></script> <!--from d3 website-->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.2.2/d3.min.js"></script> <!--script used in tutorial-->
+<script src="https://d3js.org/topojson.v1.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-cookie/2.1.4/js.cookie.min.js"></script>
+
+
+<script>
+    var bt_show_graph = document.getElementById('bt_show_graph');
+    var ddl_graph = document.getElementById('ddl_graph');
+    bt_show_graph.onclick = function() {
+        var selected_graph = ddl_graph.options[ddl_graph.selectedIndex].value;
+        generate_graph(selected_graph);
+    };
+
+
+    generate_graph('Access 2010');
+
+
+
+    function generate_graph(graph_name) {
+
+        //console.log("{% url 'capstone:getdata' %}?graph_name="+graph_name);
+
+        //ADD JSON FILES FOR MAP AND DATA
+        d3.queue()
+            .defer(d3.json, "https://d3js.org/us-10m.v1.json")
+            .defer(d3.json, "{% url 'capstone:getdata' %}?graph_name="+graph_name)
+            .defer(d3.json, "{% url 'capstone:getmetadata' %}?graph_name="+graph_name)
+            .await(ready);
+
+
+        // DRAWS THE MAP
+        function ready(error, us, data, metadata) {
+            if (error) throw error;
+
+            d3.selectAll("svg > *").remove();
+
+            function draw_key(svg) {
+
+            // range for the tick-marks
+            var x = d3.scaleLinear()
+                .domain([1, 10])
+                .rangeRound([0, 260]);
+            var w = 350, h = 120;
+            svg.append("rect")
+                .attr("width", w - 100)
+                .attr("height", h - 100)
+                .style("fill", "url(#gradient)")
+                .style('stroke', 'black')
+                .style('stroke-width', '1')
+                .attr("transform", "translate(600,40)");
+
+
+            // add the key to the SVG
+            var g = svg.append("g")
+                .attr("class", "key")
+                .attr("transform", "translate(600,40)");
+
+            var legend = svg.append("defs")
+                .append("svg:linearGradient")
+                .attr("id", "gradient")
+                .attr("x1", "0%")
+                .attr("x2", "100%")
+                .attr("spreadMethod", "pad");
+            legend.append("stop")
+                .attr("offset", "0%")
+                .attr("stop-color", '#cce6ff')
+                .attr("stop-opacity", 1);
+            legend.append("stop")
+                .attr("offset", "100%")
+                .attr("stop-color", '#0000ff')
+                .attr("stop-opacity", 1);
+            var y = d3.scaleLinear().range([300, 0]).domain([1, 100]);
+    //        var yAxis = d3.axisLeft().scale(y).orient("right");
+    //        key.append("g").attr("class","y axis").attr("transform", "translate(41,10)").call(yAxis).append("text").attr("transform", "rotate(-90)").attr("y", 30).attr("dy", ".71em").style("text-anchor", "end").text("axis title");
+
+
+            // DRAW THE TITLE OVER THE KEY
+            g.append("text")
+                .attr("class", "caption")
+                .attr("x", 0)
+                .attr("y", -6)
+                .attr("fill", "#000")
+                .attr("text-anchor", "start")
+                .attr("font-weight", "bold")
+                .text(legend_title);
+
+            //DRAW NUMBERS BELOW KEY
+            g.call(d3.axisBottom(x)
+                .tickSize(20)
+                .tickFormat(function (d) {
+                    if (upper_bound < 0.3){
+                        return (((upper_bound - lower_bound) / 10) * d).toFixed(2) + "%";
+                    }
+                    else if (upper_bound < 6) {
+                        return (((upper_bound - lower_bound) / 10) * d).toFixed(1) + "%";
+                    }
+                    return (((upper_bound - lower_bound) / 10) * d).toFixed(0) + "%";
+                })
+                .tickValues(d3.range(2, 10)))
+                .select(".domain")
+                .remove();
+        }
+
+                var svg = d3.select("svg"),
+                    width = +svg.attr("width"),
+                    height = +svg.attr("height");
+
+                var access = d3.map();
+
+                var path = d3.geoPath();
+
+                var lower_bound = metadata.lower_bound;
+                var upper_bound = metadata.upper_bound;
+                var title = document.getElementById('page_title').innerHTML = metadata.header_text;
+                var legend_title = metadata.legend_text;
+
+                // ADD COLOR SCALE
+                var color = d3.scaleLinear()
+                    .domain([lower_bound, upper_bound])
+                    //.domain(d3.range(2, 88))
+                    //.domain([0.02, 0.04, 0.06, 0.08, 0.10])
+                    //.range(["#f2f0f7", "#dadaeb", "#bcbddc", "#9e9ac8", "#756bb1", "#54278f"]);
+                    //.range(['#f7fbff','#deebf7','#c6dbef','#9ecae1','#6baed6','#4292c6','#2171b5','#08519c','#08306b']);
+                    .range(['#cce6ff', '#0000ff']);
+
+                draw_key(svg);
+
+            //console.log(metadata);
+
+            data = data.all_data;
+            for (var i = 0; i < data.length; i++) {
+                access.set(data[i].county_id,{data_value: +data[i].data_value, county: data[i].county, state: data[i].state});
+            }
+
+            svg.append("g")
+                .attr("class", "counties")
+                .selectAll("path")
+                .data(topojson.feature(us, us.objects.counties).features)
+                .enter().append("path")
+                .attr("fill", function (d) {
+                    //console.log(d);
+
+                    d.data = access.get(d.id);
+                    if (typeof d.data == 'undefined') {
+                        return '#000000'
+                    }
+                    return color(d.data.data_value);
+
+
+                })
+                .attr("d", path)
+                .append("title")
+                .text(function (d) {
+                    console.log(d);
+                    if (typeof d.data != 'undefined') {
+                        return d.data.data_value.toFixed(2) + "%" + ' ' + d.data.county + ',' + ' ' + d.data.state;
+                    } else {
+                        return 'No Data';
+                    }
+                });
+
+            // DRAWS STATE LINES
+            svg.append("path")
+                .datum(topojson.mesh(us, us.objects.states, function (a, b) {
+                    return a !== b;
+                }))
+                .attr("class", "states")
+                .attr("d", path);
+        }
+    }
+</script>

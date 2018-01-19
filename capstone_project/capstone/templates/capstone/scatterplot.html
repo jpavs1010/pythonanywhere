@@ -1,0 +1,225 @@
+<ul>
+    <li><a class="active" href="{% url 'capstone:index2' %}">Map</a></li>
+    <li><a href="{% url 'capstone:correlation' %}">Correlations</a></li>
+    <li><a href="{% url 'capstone:scatterplot' %}">Scatter Plot</a></li>
+    <li id="page_title"></li>
+    <select id="variable1">
+        <option value="">Select Variable 1</option>
+        {% for mapdatum in mapdata %}
+        <option value="{{mapdatum.variable}}">{{mapdatum.variable}}</option>
+        {% endfor %}
+    </select>
+    <select id="variable2">
+        <option value="">Select Variable 2</option>
+        {% for mapdatum in mapdata %}
+        <option value="{{mapdatum.variable}}">{{mapdatum.variable}}</option>
+        {% endfor %}
+    </select>
+    <button id="scatterplot">Create Scatterplot</button>
+</ul>
+
+<svg></svg>
+<style>
+
+    body {
+      font: 16px Helvetica serif;
+    }
+    .axis path,
+    .axis line {
+        fill: none;
+        stroke: #000;
+        shape-rendering: crispEdges;
+    }
+    .dot {
+        stroke: #000;
+    }
+    div.tooltip {
+        position: absolute;
+        text-align: left;
+        width: 190px;
+        height: 45px;
+        padding: 2px;
+        font: 12px sans-serif;
+        font-weight: bold;
+        background: #ffb366;
+        border: 0px;
+        border-radius: 8px;
+        pointer-events: none;
+    }
+    ul {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: lightblue;
+        height: 22px;
+
+}
+
+    li {
+        float: left;
+    }
+
+    li a {
+        display: block;
+        color: black;
+        text-align: center;
+        padding: 0px 16px;
+        text-decoration: none;
+    }
+
+    li a:hover {
+        background-color: blue;
+        height: 22px;
+        font-weight: bold;
+        color: white;
+    }
+    #page_title {
+        padding: 0px 50px;
+        font-weight: bold;
+        font-size: 20px;
+    }
+</style>
+
+<script src="https://d3js.org/d3.v4.min.js"></script>
+
+<script>
+
+    function on_load() {
+        var title = document.getElementById('page_title').innerHTML = 'Scatter Plot: Obese 2008 and Diabetes 2008';
+        generate_graph('Obese 2008', 'Diabetes 2008');
+    }
+
+    on_load()
+
+
+    var scatterplot = document.getElementById('scatterplot');
+    scatterplot.onclick = function () {
+        var variable1_ddl = document.getElementById('variable1');
+        var variable2_ddl = document.getElementById('variable2');
+        var v1 = variable1.options[variable1.selectedIndex].value;
+        var v2 = variable2.options[variable2.selectedIndex].value;
+        var title = document.getElementById('page_title').innerHTML = 'Scatter Plot: ' + v1 + ' and ' + v2;
+        generate_graph(v1, v2);
+    };
+
+
+
+
+
+    function generate_graph(variable1, variable2) {
+
+        var margin = {top: 20, right: 20, bottom: 50, left: 40},
+            width = 960 - margin.right - margin.left,
+            height = 500 - margin.top - margin.bottom;
+
+        d3.selectAll("svg > *").remove();
+
+        var x = d3.scaleLinear().range([0, width]);
+        var y = d3.scaleLinear().range([height, 0]);
+        var color = d3.scaleOrdinal(d3.schemeCategory10);
+        var xAxis = d3.axisBottom(x).ticks(20);//.tickFormat(function(d){ return d.x;}
+        var yAxis = d3.axisLeft(y).ticks(20);
+
+        var div = d3.select("body").append("div")
+            .attr("class", "tooltip")
+            .style("opacity", 0);
+
+
+        var svg = d3.select('svg')//d3.select("body").append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+
+        d3.json("{% url 'capstone:scatterplot_data' %}?v1=" + variable1 + "&v2=" + variable2,
+            function (error, data) {
+                if (error) {
+                    console.log(error);
+                }
+                data = data.all_data;
+
+
+
+                data.forEach(function (d) {
+                    d.choice1 = +d.choice1;
+                    d.choice2 = +d.choice2;
+
+                });
+
+                x.domain(d3.extent(data, function (d) {
+                    return d.choice1;
+                })).nice();
+                y.domain(d3.extent(data, function (d) {
+                    return d.choice2;
+                })).nice();
+
+                // draws the data points-------------------------------------------
+                svg.selectAll(".dot")
+                    .data(data)
+                    .enter().append("circle")
+                    .attr("class", "dot")
+
+                    .attr("cx", function (d) {
+                        return x(d.choice1);
+                    })
+                    .attr("cy", function (d) {
+                        return y(d.choice2);
+                    })
+                    .attr("r", 3.5)
+                    .on("mouseover", function(d) {
+                    div.transition()
+                    .duration(200)
+                    .style("opacity", .9);
+                    div	.html(d.county + ', '  + d.state + '<br/>' + variable1 +': ' + d.choice1.toFixed(2) + '%' + '<br/>' + variable2 + ': ' + d.choice2.toFixed(2)+ '%')
+                    .style("left", (d3.event.pageX) + "px")
+                    .style("top", (d3.event.pageY - 28) + "px");
+                    })
+                    .on("mouseout", function(d) {
+                    div.transition()
+                    .duration(500)
+                    .style("opacity", 0);
+                    })
+                    .style("fill", function (d) {
+                            return '#0000ff';
+
+                        });
+
+                // ---------------------------------------------------------------------
+                // draw x axis
+                svg.append("g")
+                    .attr("class", "x axis")
+                    .attr("transform", "translate(0," + height + ")")
+                    .call(xAxis)
+                    .append("text")
+                    .attr("class", "label")
+                    .attr("x", width)
+                    .attr("y", -6)
+                    .style("text-anchor", "end")
+                    .text(variable1);
+
+                // draw y axis
+                svg.append("g")
+                    .attr("class", "y axis")
+                    .call(yAxis)
+                    .append("text")
+                    .attr("class", "label")
+                    .attr("transform", "rotate(-90)")
+                    .attr("y", 6)
+                    .attr("dy", ".71em")
+                    .style("text-anchor", "end")
+                    .text(variable2);
+//________________________________________remove fill: none on axis_____________________________________
+                var es = document.querySelectorAll('.axis');
+                for (var i=0; i<es.length; ++i) {
+                    es[i].removeAttribute('fill');
+                }
+
+            });
+
+    }
+
+
+</script>
+

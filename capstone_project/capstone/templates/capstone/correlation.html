@@ -1,0 +1,171 @@
+<body>
+    <ul>
+        <li><a class="active" href="{% url 'capstone:index2' %}">Map</a></li>
+        <li><a href="{% url 'capstone:correlation' %}">Correlations</a></li>
+        <li><a href="{% url 'capstone:scatterplot' %}">Scatter Plot</a></li>
+        <li id="page_title">Correlation Matrix</li>
+
+    </ul>
+    <!--<div>Correlations</div>-->
+    <canvas id="cnv" width="1300" height="52"></canvas>
+    <!--<select id="variable1">
+        {% for mapdatum in mapdata %}
+        <option value="{{mapdatum.variable}}">{{mapdatum.variable}}</option>
+        {% endfor %}
+    </select>
+    <select id="variable2">
+        {% for mapdatum in mapdata %}
+        <option value="{{mapdatum.variable}}">{{mapdatum.variable}}</option>
+        {% endfor %}
+    </select>
+    <button id="correlate">Correlate</button>
+    <div id="correlation">{{correlation}}</div>-->
+    <!--<table>-->
+        <!--<tr>-->
+            <!--<td></td>-->
+            <!--{% for mapdatum in mapdata%}-->
+            <!--<td class="rotate">{{mapdatum.variable}}</td>-->
+            <!--{% endfor %}-->
+        <!--</tr>-->
+        <!--{% for mapdatum in mapdata%}-->
+        <!--<tr>-->
+            <!--<td>{{mapdatum.variable}}</td>-->
+            <!---->
+        <!--</tr>-->
+        <!--{% endfor %}-->
+    <!--</table>-->
+    {{ table | safe }}
+</body>
+
+<style>
+    div {
+        font-weight: bold;
+        font-size: 2em;
+        width: 200px;
+        height: 37px;
+        margin: 0px;
+        display: inline-block;
+    }
+    ul {
+        list-style-type: none;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        background-color: lightblue;
+        height: 22px;
+
+}
+
+    li {
+        float: left;
+    }
+
+    li a {
+        display: block;
+        color: black;
+        text-align: center;
+        padding: 0px 16px;
+        text-decoration: none;
+    }
+
+    li a:hover {
+        background-color: blue;
+        height: 22px;
+        font-weight: bold;
+        color: white;
+    }
+     #page_title {
+        padding: 0px 300px;
+        font-weight: bold;
+        font-size: 20px;
+    }
+
+</style>
+
+<script>
+
+    function http_get(url, success) {
+        var xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function () {
+            if (this.readyState === 4 && this.status === 200) {
+                var data = JSON.parse(xhttp.responseText);
+                success(data);
+            }
+        };
+        xhttp.open("GET", url);
+        xhttp.send();
+    };
+
+
+//    var variable1 = document.getElementById('variable1');
+//    var variable2 = document.getElementById('variable2');
+//    var correlate = document.getElementById('correlate');
+//    correlate.onclick = function() {
+//        var v1 = variable1.options[variable1.selectedIndex].value;
+//        var v2 = variable2.options[variable2.selectedIndex].value;
+//        v1 = encodeURIComponent(v1);
+//        v2 = encodeURIComponent(v2);
+//        //console.log("{% url 'capstone:correlation' %}?v1="+v1+"&v2="+v2);
+//        window.location = "{% url 'capstone:correlation' %}?v1="+v1+"&v2="+v2;
+////        http_get("{% url 'capstone:correlation' %}", function(data) {
+////            console.log(data);
+////        });
+//    };
+
+    // create canvas
+    var cnv = document.getElementById('cnv');
+
+    // box parameters
+    var ctx_draw_box = cnv.getContext("2d");
+    var w = 1090;
+    var h = 13;
+    var add_w = 50;
+    var add_h = 26;
+
+    //create color gradient and loop to fill box
+    var grd=ctx_draw_box.createLinearGradient(1090, 13, 1290, 26);
+    grd.addColorStop(0, "rgb(255, 194, 102)");
+    grd.addColorStop(.5, "rgb(255, 255, 255)");
+    grd.addColorStop(1, "rgb(0, 0, 255)");
+
+    //loop to fill box
+    for (i = 0; i < 2; ++i) {
+        ctx_draw_box.fillStyle = grd;
+        ctx_draw_box.fillRect(w, h, add_w + 150, add_h);
+    }
+
+    //loop to draw box
+    for (i = 0; i < 2; ++i) {
+        //ctx_draw_box.fillStyle=grd;
+        ctx_draw_box.rect(w, h, add_w, add_h);
+        ctx_draw_box.rect(w, h, add_w + 50, add_h);
+        ctx_draw_box.rect(w, h, add_w + 100, add_h);
+        ctx_draw_box.rect(w, h, add_w + 150, add_h);
+        ctx_draw_box.stroke();
+    }
+
+    // draw numbers for legend
+    var ctx_draw_number = cnv.getContext("2d");
+
+    for (i = 0; i < 1; ++i) {
+        ctx_draw_number.fillStyle = "black";
+        ctx_draw_number.fillText("-1.0", 1080, 49);
+        ctx_draw_number.fillText("-0.5", 1130, 49);
+        ctx_draw_number.fillText("0", 1188, 49);
+        ctx_draw_number.fillText("+0.5", 1230, 49);
+        ctx_draw_number.fillText("+1.0", 1275, 49);
+    }
+
+    // draw word legend
+
+    var ctx_title = cnv.getContext("2d");
+    ctx_title.font = "11px Helvetica";
+    ctx_title.fillStyle = "black";
+    ctx_title.fillText("Legend", 1090, 10);
+
+
+
+
+
+</script>
+
